@@ -95,6 +95,7 @@ unhcr.people.of.concern <- function (df = NULL,
 
 system.time(z <- unhcr.people.of.concern(df = unhcr.long))
 
+write.csv(z, file = 'n-people-of-concern-by-origin.csv', row.names = FALSE)
 
 
 
