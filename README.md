@@ -1,6 +1,11 @@
 UNHCR Data
 ==========
 
+All observations from 'Various' will not be included in the database at this point. (Nor observations from the "country" Bonaire, Sint Eustatius and Saba).
+
+Also, Yugoslavia was added under the code 'YUG'.
+
+
 Organizing data from UNHCR into HDX Repo (data.hdx.rwlabs.org).
 
 

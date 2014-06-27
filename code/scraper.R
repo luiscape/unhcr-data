@@ -1,7 +1,7 @@
 #### The first step is to organize UNHCR's historical data into the format we use in HDX
 
 library(reshape2)
-library(hdxdictionary)
+library(countrycode)
 
 # First load the data-models we are going to use.
 # dataset <- read.csv('data/cps/dataset.csv')
@@ -11,79 +11,114 @@ library(hdxdictionary)
 # Load UNHCR historical data (from 2000 to 2012)
 unhcr_data <- read.csv('data/source/unhcr-historical-data-2000-2012.csv', skip = 4)
 unhcr_data$Country...territory.of.residence.iso3 <-
-    hdxdictionary(unhcr_data$Country...territory.of.residence.iso3, 'country.name', 'iso2c')
+    countrycode(unhcr_data$Country...territory.of.residence, 'country.name', 'iso3c')
+
 unhcr_data$Origin...Returned.from.iso3 <-
-    hdxdictionary(unhcr_data$Origin...Returned.from.iso3, 'iso2c', 'iso3c')
+    countrycode(unhcr_data$Origin...Returned.from, 'country.name', 'iso3c')
+
+## Yugoslavia not present so creating it manually using the code 'YUG'
+for (i in 1:nrow(unhcr_data)) {
+    if (unhcr_data$Country...territory.of.residence[i] == 'Federal Republic of Yugoslavia') { 
+        unhcr_data$Country...territory.of.residence.iso3[i] <- 'YUG'
+    }
+    if (unhcr_data$Origin...Returned.from[i] == 'Federal Republic of Yugoslavia') { 
+        unhcr_data$Origin...Returned.from.iso3[i] <- 'YUG'
+    }
+}
+
 
 # from wide to long using `reshape2`
-unhcr.long <- melt(unhcr_data, id.vars = c("Origin...Returned.from.iso3", 
-                                           "Country...territory.of.residence.iso3",
-                                           "Origin...Returned.from", 
-                                           "Population.type", 
-                                           "Country...territory.of.residence"))
+unhcr_long <- melt(unhcr_data, 
+                   id.vars = c("Country...territory.of.residence", "Origin...Returned.from", "Population.type", "Country...territory.of.residence.iso3", "Origin...Returned.from.iso3"))
 
 
 # standardizing values
-unhcr.long$value <- as.numeric(unhcr.long$value)
-
+# here i am dropping the *. take a look at UNHCR's website to make sure
+# that this information is drapable. 
+unhcr_long$value <- as.numeric(unhcr_long$value)
 
 # cleaning names
-names(unhcr.long) <- c('Origin_ReturnedFrom_iso3', 
-                       'Country_TerritoryofResidence_iso3', 
-                       'Origin_ReturnedFrom', 
-                       'PopulationType',
-                       'Country_TerritoryofResidence', 
+names(unhcr_long) <- c('country_residence', 
+                       'country_origin', 
+                       'population_type', 
+                       'country_residence_iso3',
+                       'country_origin_iso3',
                        'period', 
                        'value')
+
 # cleaning years
-unhcr.long$period <- sub("x", "", unhcr.long$period, ignore.case = TRUE)
+unhcr_long$period <- sub("x", "", unhcr_long$period, ignore.case = TRUE)
 
-
-
-
-peopleOfConcern <- function (df = NULL, 
-                                     focus = TRUE) { 
+# function for the number of people of concern per country of origin
+peopleOfConcern <- function (df = NULL, focus = NULL) {
+    source('code/cpser/is_number.R')
+    min_year <- as.numeric(summary(as.numeric(df$period))[1])
+    max_year <- as.numeric(summary(as.numeric(df$period))[6])
     
-    # create progress bar
-    pb <- txtProgressBar(min = 0, max = length(focus.countries.iso3), style = 3)
-    
-    # for using only the focus countries
-    if (focus == TRUE) { 
-        focus.countries <- subset(hdx.dictionary, hdx.dictionary[7] == TRUE) 
-        focus.countries.iso3 <- as.list(focus.countries$iso2c)  # apparently iso3c not working
-    } 
-    
-    # creating the people of concern indicator per country
-    for (i in 1:length(focus.countries.iso3)) { 
+    # Country of origin
+    message('Generating: Number of People of Concern by Origin.')
+    iso3_list <- unique(df$country_residence_iso3)
+    pb <- txtProgressBar(min = 0, max = length(iso3_list), style = 3)
+    for (i in 1:length(iso3_list)) { 
+        setTxtProgressBar(pb, i) 
         
-        setTxtProgressBar(pb, i)  # Updates progress bar.
-        
-        iso3 <- hdxdictionary(focus.countries.iso3[i], 'iso2c', 'iso3c')
-        
-        for (j in 2000:2012) { 
+        for (j in min_year:max_year) { 
             period <- j
-            origin.year <- subset(df, df$Origin_ReturnedFrom_iso3 == iso3 & df[6] == j)
-            
-            value <- sum(origin.year$value, na.rm = TRUE)
-            it <- data.frame(period, value)
-            if (j == 2000) { it.years <- it }
-            else { it.years <- rbind(it.years, it) }
-        
+            year_sub <- subset(df, (country_origin_iso3 == iso3_list[i] 
+                                    & period == j))
+            value <- sum(as.numeric(year_sub$value), na.rm = TRUE)
+            a <- data.frame(period, value)
+            if (j == min_year) { b <- a }
+            else { b <- rbind(b, a) }
         }
-        
-        it.years$region <- iso3
-        it.years$inID <- "CHD.O.PRO.0001.T6"  # not CHD final code.
-        if (i == 1) { final <- it.years }
-        else { final <- rbind(final, it.years) }
-    
+        b$region <- iso3_list[i]
+        if (i == 1) { z <- b }
+        else { z <- rbind(z, b) }
     }
+    print(class(z))
+    z$inID <- "CHD.O.PRO.0001.T6"  # not CHD final code.
+    z$source <- "http://popstats.unhcr.org"
+    z$dsID <- "unhcr-popstats"
+    z$is_number <- isNumber(z)
+    population_of_concern_origin <- z
     
-    final
+    # Country of residence
+    message('Generating: Number of People of Concern by Residence')
+    pb <- txtProgressBar(min = 0, max = length(iso3_list), style = 3)
+    for (i in 1:length(iso3_list)) { 
+        setTxtProgressBar(pb, i) 
+        
+        for (j in min_year:max_year) { 
+            period <- j
+            year_sub <- subset(df, (country_residence_iso3 == iso3_list[i] 
+                                    & period == j))
+            value <- sum(as.numeric(year_sub$value), na.rm = TRUE)
+            a <- data.frame(period, value)
+            if (j == min_year) { b <- a }
+            else { b <- rbind(b, a) }
+        }
+        b$region <- iso3_list[i]
+        if (i == 1) { z <- b }
+        else { z <- rbind(z, b) }
+    }
+    z$inID <- "CHD.O.PRO.0002.T6"  # not CHD final code.
+    z$source <- "http://popstats.unhcr.org"
+    z$dsID <- "unhcr-popstats"
+    z$is_number <- isNumber(z)
+    population_of_concern_residence <- z
+    
+    ## Add other indicators here ##
+    
+    output <- rbind(population_of_concern_origin, 
+                    population_of_concern_residence)
+    return(output)
 }
 
-people_of_concern <- peopleOfConcern(df = unhcr.long)
+system.time(people_of_concern <- peopleOfConcern(df = unhcr_long))
 
-write.csv(z, file = 'data/source/Number of People of Concern by Origin.csv', row.names = FALSE)
+
+# writing the output
+write.csv(people_of_concern, file = 'data/value.csv', row.names = FALSE)
 
 
 
