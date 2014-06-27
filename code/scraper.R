@@ -1,24 +1,22 @@
 #### The first step is to organize UNHCR's historical data into the format we use in HDX
 
-library(countrycode)
-library(ggplot2)
 library(reshape2)
-library(lubridate)
+library(hdxdictionary)
 
-# First load the data-models we are going to use. 
-dataset <- read.csv('cps-export/dataset.csv')
-indicator <- read.csv('cps-export/indicator.csv')
-value <- read.csv('cps-export/value.csv')
+# First load the data-models we are going to use.
+# dataset <- read.csv('data/cps/dataset.csv')
+# indicator <- read.csv('data/cps/indicator.csv')
+# value <- read.csv('data/cps/value.csv')
 
-# Then load UNHCR historical data (from 2000 to 2012)
-unhcr.data <- read.csv('data/unhcr-historical-data-2000-2012.csv', skip = 4)
-unhcr.data$Country...territory.of.residence.iso3 <- 
-    hdxdictionary(unhcr.data$Country...territory.of.residence.iso3, 'country.name', 'iso3c')
-unhcr.data$Origin...Returned.from.iso3 <- 
-    hdxdictionary(unhcr.data$Origin...Returned.from.iso3, 'iso2c', 'iso3c')
+# Load UNHCR historical data (from 2000 to 2012)
+unhcr_data <- read.csv('data/source/unhcr-historical-data-2000-2012.csv', skip = 4)
+unhcr_data$Country...territory.of.residence.iso3 <-
+    hdxdictionary(unhcr_data$Country...territory.of.residence.iso3, 'country.name', 'iso2c')
+unhcr_data$Origin...Returned.from.iso3 <-
+    hdxdictionary(unhcr_data$Origin...Returned.from.iso3, 'iso2c', 'iso3c')
 
-# from wide to long 
-unhcr.long <- melt(unhcr.data, id.vars = c("Origin...Returned.from.iso3", 
+# from wide to long using `reshape2`
+unhcr.long <- melt(unhcr_data, id.vars = c("Origin...Returned.from.iso3", 
                                            "Country...territory.of.residence.iso3",
                                            "Origin...Returned.from", 
                                            "Population.type", 
@@ -43,17 +41,7 @@ unhcr.long$period <- sub("x", "", unhcr.long$period, ignore.case = TRUE)
 
 
 
-pop.summary <- data.frame(table(unhcr.data$Population.type))
-ggplot(pop.summary, aes(Var1, Freq)) + 
-    geom_bar(aes(reorder(pop.summary$Var1, - pop.summary$Freq), Freq), 
-             stat = 'identity', fill = '#0988bb') +
-    geom_text(aes(label = Freq), position = position_dodge(width = 0.9), vjust = -0.25 ) +
-    labs(title = "Number of classified populations.", 
-         x = "Class", 
-         y = "Count")
-
-
-unhcr.people.of.concern <- function (df = NULL, 
+peopleOfConcern <- function (df = NULL, 
                                      focus = TRUE) { 
     
     # create progress bar
@@ -84,7 +72,7 @@ unhcr.people.of.concern <- function (df = NULL,
         }
         
         it.years$region <- iso3
-        it.years$inID <- "Number of People of Concern by Origin"
+        it.years$inID <- "CHD.O.PRO.0001.T6"  # not CHD final code.
         if (i == 1) { final <- it.years }
         else { final <- rbind(final, it.years) }
     
@@ -93,19 +81,19 @@ unhcr.people.of.concern <- function (df = NULL,
     final
 }
 
-system.time(z <- unhcr.people.of.concern(df = unhcr.long))
+people_of_concern <- peopleOfConcern(df = unhcr.long)
 
-write.csv(z, file = 'n-people-of-concern-by-origin.csv', row.names = FALSE)
-
-
+write.csv(z, file = 'data/source/Number of People of Concern by Origin.csv', row.names = FALSE)
 
 
-# Using the model.
-disasters <- read.csv('data-summary/ReliefWeb-ALLCountries-disaster-2000-2014-long.csv')
-disasters$indID <- 'RW001'
-colnames(disasters)[1] <- 'value'
-colnames(disasters)[2] <- 'period'
-colnames(disasters)[3] <- 'region'
-disasters$dsID <- 'reliefweb'
-disasters$Country.Name <- NULL
-disasters$source <- NA
+
+# 
+# # Using the CPS model.
+# disasters <- read.csv('data-summary/ReliefWeb-ALLCountries-disaster-2000-2014-long.csv')
+# disasters$indID <- 'RW001'
+# colnames(disasters)[1] <- 'value'
+# colnames(disasters)[2] <- 'period'
+# colnames(disasters)[3] <- 'region'
+# disasters$dsID <- 'reliefweb'
+# disasters$Country.Name <- NULL
+# disasters$source <- NA
