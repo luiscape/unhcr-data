@@ -54,11 +54,19 @@ peopleOfConcern <- function (df = NULL, focus = NULL) {
     source('code/cpser/is_number.R')
     min_year <- as.numeric(summary(as.numeric(df$period))[1])
     max_year <- as.numeric(summary(as.numeric(df$period))[6])
+    indicator_list <- read.csv('data/cps/indicator.csv')
     
-    # Country of origin
+    #####################################################
+    #####################################################
+    ##### Creating the People of Concern Indicators #####
+    #####################################################
+    #####################################################
+    
+    ## Country of origin ##
     message('Generating: Number of People of Concern by Origin.')
     iso3_list <- unique(df$country_origin_iso3)
     pb <- txtProgressBar(min = 0, max = length(iso3_list), style = 3)
+    ind_or <- 'Number of People of Concern by Country of Origin'
     for (i in 1:length(iso3_list)) { 
         setTxtProgressBar(pb, i) 
         
@@ -72,19 +80,19 @@ peopleOfConcern <- function (df = NULL, focus = NULL) {
             else { b <- rbind(b, a) }
         }
         b$region <- iso3_list[i]
-        if (i == 1) { z <- b }
-        else { z <- rbind(z, b) }
+        if (i == 1) z <- data.frame(b)
+        else z <- rbind(z, b)
     }
-    z$indID <- "CHD.B.PRO.0001.T6"  # not CHD final code.
+    z$indID <- indicator_list[indicator_list$name == ind_or, 2]
     z$source <- "http://popstats.unhcr.org"
     z$dsID <- "unhcr-popstats"
-    z$is_number <- isNumber(z)
+    z$is_number <- 1
     population_of_concern_origin <- z
     
-    # Country of residence
+    ## Country of residence ##
     message('Generating: Number of People of Concern by Residence')
     iso3_list <- unique(df$country_residence_iso3)
-    population_of_concern_residence <- tapply(df$value, df$period, sum, na.rm = TRUE)
+    ind_or <- 'Number of People of Concern by Country of Residence'
     pb <- txtProgressBar(min = 0, max = length(iso3_list), style = 3)
     for (i in 1:length(iso3_list)) { 
         setTxtProgressBar(pb, i) 
@@ -99,26 +107,41 @@ peopleOfConcern <- function (df = NULL, focus = NULL) {
             else { b <- rbind(b, a) }
         }
         b$region <- iso3_list[i]
-        if (i == 1) { z <- b }
-        else { z <- rbind(z, b) }
+        if (i == 1) z <- b
+        else z <- rbind(z, b)
     }
-    z$indID <- "CHD.B.PRO.0002.T6"  # not CHD final code.
+    z$indID <- indicator_list[indicator_list$name == ind_or, 2]
     z$source <- "http://popstats.unhcr.org"
     z$dsID <- "unhcr-popstats"
-    z$is_number <- isNumber(z)
+    z$is_number <- 1
     population_of_concern_residence <- z
     
     
     ##########################################
     ##########################################
-    ## Collecting all the native indicators ##
+    ### Total number of people of concern ####
     ##########################################
     ##########################################
+    
+    total_population_of_concern <- data.frame(tapply(df$value, df$period, sum, na.rm = TRUE))
+    colnames(total_population_of_concern) <- 'value'
+    total_population_of_concern$period <- 2000:2013
+    total_population_of_concern$indID <- indicator_list[indicator_list$name == 'Total Number of People of Concern', 2]
+    total_population_of_concern$is_number <- 1
+    total_population_of_concern$region <- 'WLD'  # according to rw http://api.rwlabs.org/v1/countries/254
+    total_population_of_concern$dsID <- 'unhcr-popstats'
+    total_population_of_concern$source <- 'http://popstats.unhcr.org'
+    
+         
+    #########################################
+    #########################################
+    # Collecting all the native indicators ##
+    #########################################
+    #########################################
     
     
     # Country of Origin #
     message('Collecting native indicators by origin.')
-    indicator_list <- read.csv('data/cps/indicator.csv')
     type_list <- unique(df$population_type)
     pb <- txtProgressBar(min = 0, max = length(type_list), style = 3)
     for (i in 1:length(type_list)) {
@@ -175,13 +198,14 @@ peopleOfConcern <- function (df = NULL, focus = NULL) {
                           'dsID',
                           'source',
                           'is_number')
-#     all_idata <- isNumber(all_idata)  # taking too long
     pop_concern_or <<- population_of_concern_origin
     pop_concern_res <<- population_of_concern_residence
+    total_population_of_concern <<- total_population_of_concern
     all_native <<- all_idata
     value <- rbind(population_of_concern_origin, 
-                    population_of_concern_residence,
-                   all_idata, row.names = NULL)
+                   population_of_concern_residence,
+                   all_idata, 
+                   total_population_of_concern)
     
     message('Done.')
     return(value)
