@@ -63,7 +63,7 @@ peopleOfConcern <- function (df = NULL, focus = NULL) {
     #####################################################
     
     ## Country of origin ##
-    message('Generating: Number of People of Concern by Origin.')
+    message('Generating: Number of People of Concern by Origin.\n')
     iso3_list <- unique(df$country_origin_iso3)
     pb <- txtProgressBar(min = 0, max = length(iso3_list), style = 3)
     ind_or <- 'Number of People of Concern by Country of Origin'
@@ -90,7 +90,7 @@ peopleOfConcern <- function (df = NULL, focus = NULL) {
     population_of_concern_origin <- z
     
     ## Country of residence ##
-    message('Generating: Number of People of Concern by Residence')
+    message('Generating: Number of People of Concern by Residence.\n')
     iso3_list <- unique(df$country_residence_iso3)
     ind_or <- 'Number of People of Concern by Country of Residence'
     pb <- txtProgressBar(min = 0, max = length(iso3_list), style = 3)
@@ -141,7 +141,7 @@ peopleOfConcern <- function (df = NULL, focus = NULL) {
     
     
     # Country of Origin #
-    message('Collecting native indicators by origin.')
+    message('Collecting native indicators by origin.\n')
     type_list <- unique(df$population_type)
     pb <- txtProgressBar(min = 0, max = length(type_list), style = 3)
     for (i in 1:length(type_list)) {
@@ -198,10 +198,12 @@ peopleOfConcern <- function (df = NULL, focus = NULL) {
                           'dsID',
                           'source',
                           'is_number')
-    pop_concern_or <<- population_of_concern_origin
-    pop_concern_res <<- population_of_concern_residence
-    total_population_of_concern <<- total_population_of_concern
-    all_native <<- all_idata
+    # debuggers
+    # pop_concern_or <<- population_of_concern_origin
+    # pop_concern_res <<- population_of_concern_residence
+    # total_population_of_concern <<- total_population_of_concern
+    # all_native <<- all_idata
+    
     value <- rbind(population_of_concern_origin, 
                    population_of_concern_residence,
                    all_idata, 
