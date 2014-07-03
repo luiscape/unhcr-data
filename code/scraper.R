@@ -3,10 +3,7 @@
 library(reshape2)
 library(countrycode)
 
-# First load the data-models we are going to use.
-# dataset <- read.csv('data/cps/dataset.csv')
-# indicator <- read.csv('data/cps/indicator.csv')
-# value <- read.csv('data/cps/value.csv')
+# Download data from HDX Repo.
 
 # Load UNHCR historical data (from 2000 to 2012)
 unhcr_data <- read.csv('data/source/unhcr-historical-data-2000-2013.csv', skip = 4)
