@@ -214,4 +214,5 @@ system.time(value <- peopleOfConcern(df = unhcr_long))
 
 
 # writing the output
+value <- na.omit(value)
 write.csv(value, file = 'data/cps/value.csv', row.names = FALSE)
